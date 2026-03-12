@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -8,6 +11,57 @@ class LoginScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  Future<void> loginUser(BuildContext context) async {
+
+    String email = emailController.text;
+    String password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter email and password")),
+      );
+      return;
+    }
+
+    try {
+
+      var response = await http.post(
+        Uri.parse("http://192.168.1.37:8000/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password
+        }),
+      );
+
+      var data = jsonDecode(response.body);
+
+      if (data["message"] == "Login successful") {
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(userEmail: email),
+          ),
+        );
+
+      } else {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data["error"] ?? "Login failed")),
+        );
+
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Server connection error")),
+      );
+
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,14 +69,17 @@ class LoginScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
               /// Back Button
               IconButton(
-                icon: const Icon(Icons.arrow_back,
-                    color: Colors.deepPurple),
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.deepPurple,
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -120,10 +177,11 @@ class LoginScreen extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              /// Sign In Button
+              /// SIGN IN BUTTON
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -133,19 +191,7 @@ class LoginScreen extends StatelessWidget {
                   ),
 
                   onPressed: () {
-
-                    String email = emailController.text;
-
-                    if (email.isEmpty) {
-                      email = "Student";
-                    }
-
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => HomeScreen(userEmail: email),
-                      ),
-                    );
+                    loginUser(context);
                   },
 
                   child: const Text(
@@ -194,16 +240,21 @@ class LoginScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+
                     const Text("New here? "),
+
                     GestureDetector(
                       onTap: () {
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
+                            builder: (_) =>  RegisterScreen(),
                           ),
                         );
+
                       },
+
                       child: const Text(
                         "Create an account ✨",
                         style: TextStyle(
@@ -212,6 +263,7 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+
                   ],
                 ),
               ),

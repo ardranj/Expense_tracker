@@ -8,6 +8,64 @@ app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
 
+# -------------------------
+# REGISTER USER
+# -------------------------
+
+@app.post("/register")
+def register(user: schemas.UserCreate):
+
+    db = SessionLocal()
+
+    existing_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if existing_user:
+        return {"error": "User already exists"}
+
+    new_user = models.User(
+        name=user.name,
+        email=user.email,
+        phone=user.phone,
+        password=user.password
+    )
+
+    db.add(new_user)
+    db.commit()
+
+    return {"message": "Account created successfully"}
+
+
+# -------------------------
+# LOGIN USER
+# -------------------------
+
+@app.post("/login")
+def login(user: schemas.UserLogin):
+
+    db = SessionLocal()
+
+    existing_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if not existing_user:
+        return {"error": "User not found"}
+
+    if existing_user.password != user.password:
+        return {"error": "Invalid password"}
+
+    return {
+        "message": "Login successful",
+        "email": existing_user.email
+    }
+
+
+# -------------------------
+# ADD EXPENSE
+# -------------------------
+
 @app.post("/add-expense")
 def add_expense(expense: schemas.ExpenseCreate):
 
@@ -26,6 +84,10 @@ def add_expense(expense: schemas.ExpenseCreate):
 
     return {"message": "Expense added successfully"}
 
+
+# -------------------------
+# GET TRANSACTIONS
+# -------------------------
 
 @app.get("/transactions")
 def get_transactions():

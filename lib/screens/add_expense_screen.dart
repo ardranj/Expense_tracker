@@ -14,7 +14,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
-  String selectedCategory = "Food";
+  String selectedCategory = "Select Category";
   DateTime selectedDate = DateTime.now();
 
   List<String> categories = [
@@ -38,10 +38,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     double amount = double.tryParse(amountController.text) ?? 0;
 
     Map<String, dynamic> transaction = {
+      "title": selectedCategory,
       "amount": amount,
       "category": selectedCategory,
       "description": descriptionController.text,
-      "date": selectedDate,        // IMPORTANT: DateTime
+      "date": selectedDate.toIso8601String(),       // IMPORTANT: DateTime
       "isExpense": isExpense,
     };
 
