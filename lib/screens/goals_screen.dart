@@ -28,9 +28,9 @@ class GoalsScreen extends StatefulWidget {
 }
 
 class _GoalsScreenState extends State<GoalsScreen> {
+
   List<Goal> goals = [];
 
-  /// CHANGE THIS TO YOUR LAPTOP IP
   String apiUrl = "http://192.168.1.38:8000";
 
   @override
@@ -39,39 +39,52 @@ class _GoalsScreenState extends State<GoalsScreen> {
     loadGoals();
   }
 
-  double get totalSaved => goals.fold(0, (sum, g) => sum + g.saved);
+  /// THIS MAKES SURE GOALS LOAD AGAIN WHEN SCREEN REOPENS
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    loadGoals();
+  }
 
+  double get totalSaved => goals.fold(0, (sum, g) => sum + g.saved);
   double get totalTarget => goals.fold(0, (sum, g) => sum + g.target);
 
-  /// LOAD GOALS FROM BACKEND
+  /// LOAD GOALS FROM DATABASE
   Future<void> loadGoals() async {
-    try {
-      var response = await http.get(Uri.parse("$apiUrl/goals"));
 
-      if (response.statusCode == 200) {
+    try {
+
+      var response = await http.get(
+        Uri.parse("$apiUrl/goals"),
+      );
+
+      if(response.statusCode == 200){
+
         List data = jsonDecode(response.body);
 
         setState(() {
-          goals = data
-              .map(
-                (g) => Goal(
-                  title: g["title"],
-                  saved: g["saved"].toDouble(),
-                  target: g["target"].toDouble(),
-                  monthlyContribution: g["monthlyContribution"].toDouble(),
-                  deadline: DateTime.parse(g["deadline"]),
-                ),
-              )
-              .toList();
+
+          goals = data.map((g) => Goal(
+            title: g["title"],
+            saved: g["saved"].toDouble(),
+            target: g["target"].toDouble(),
+            monthlyContribution: g["monthlyContribution"].toDouble(),
+            deadline: DateTime.parse(g["deadline"]),
+          )).toList();
+
         });
+
       }
-    } catch (e) {
+
+    } catch(e) {
       print(e);
     }
+
   }
 
   /// ADD GOAL
   void addGoal() {
+
     TextEditingController nameController = TextEditingController();
     TextEditingController targetController = TextEditingController();
     TextEditingController savedController = TextEditingController();
@@ -82,30 +95,38 @@ class _GoalsScreenState extends State<GoalsScreen> {
     showDialog(
       context: context,
       builder: (context) {
+
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+
             return AlertDialog(
+
               title: const Text("Add Goal"),
+
               content: SingleChildScrollView(
                 child: Column(
                   children: [
+
                     TextField(
                       controller: nameController,
                       decoration:
                           const InputDecoration(labelText: "Goal Name"),
                     ),
+
                     TextField(
                       controller: targetController,
                       keyboardType: TextInputType.number,
                       decoration:
                           const InputDecoration(labelText: "Target Amount"),
                     ),
+
                     TextField(
                       controller: savedController,
                       keyboardType: TextInputType.number,
                       decoration:
                           const InputDecoration(labelText: "Saved Amount"),
                     ),
+
                     TextField(
                       controller: contributionController,
                       keyboardType: TextInputType.number,
@@ -113,113 +134,155 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         labelText: "Monthly Contribution",
                       ),
                     ),
-                    const SizedBox(height: 10),
+
+                    const SizedBox(height:10),
+
                     Row(
                       children: [
+
                         const Text("Deadline: "),
+
                         Text(
                           selectedDate == null
                               ? "Not selected"
                               : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                         ),
+
                         const Spacer(),
+
                         IconButton(
                           icon: const Icon(Icons.calendar_month),
+
                           onPressed: () async {
-                            print("ADD BUTTON PRESSED");
-                            DateTime? picked = await showDatePicker(
+
+                            DateTime? picked =
+                                await showDatePicker(
+
                               context: context,
                               firstDate: DateTime.now(),
                               lastDate: DateTime(2030),
                               initialDate: DateTime.now(),
+
                             );
 
-                            if (picked != null) {
+                            if(picked != null){
+
                               setStateDialog(() {
                                 selectedDate = picked;
                               });
+
                             }
+
                           },
                         ),
+
                       ],
                     ),
+
                   ],
                 ),
               ),
+
               actions: [
+
                 TextButton(
-                  onPressed: () {
+                  onPressed: (){
                     Navigator.pop(context);
                   },
                   child: const Text("Cancel"),
                 ),
+
                 ElevatedButton(
                   onPressed: () async {
-                    if (selectedDate == null) return;
+
+                    if(selectedDate == null) return;
 
                     await http.post(
                       Uri.parse("$apiUrl/add-goal"),
                       headers: {"Content-Type": "application/json"},
                       body: jsonEncode({
+
                         "title": nameController.text,
                         "target": double.parse(targetController.text),
+
                         "saved": savedController.text.isEmpty
                             ? 0
                             : double.parse(savedController.text),
+
                         "monthlyContribution":
                             double.parse(contributionController.text),
-                        "deadline": selectedDate.toString(),
+
+                        "deadline": selectedDate.toString()
+
                       }),
                     );
 
-                    loadGoals();
+                    await loadGoals();
 
                     Navigator.pop(context);
+
                   },
+
                   child: const Text("Add"),
                 ),
+
               ],
+
             );
+
           },
         );
+
       },
     );
+
   }
 
   /// EDIT CONTRIBUTION
   void editContribution(Goal goal) {
+
     TextEditingController controller =
         TextEditingController(text: goal.monthlyContribution.toString());
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+
         title: const Text("Edit Contribution"),
+
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
           decoration:
               const InputDecoration(labelText: "Monthly Contribution"),
         ),
+
         actions: [
+
           TextButton(
-            onPressed: () {
+            onPressed: (){
               Navigator.pop(context);
             },
             child: const Text("Cancel"),
           ),
+
           ElevatedButton(
-            onPressed: () {
+            onPressed: (){
+
               setState(() {
+
                 goal.monthlyContribution =
-                    double.tryParse(controller.text) ??
-                        goal.monthlyContribution;
+                    double.tryParse(controller.text)
+                    ?? goal.monthlyContribution;
+
               });
 
               Navigator.pop(context);
+
             },
             child: const Text("Save"),
           ),
+
         ],
       ),
     );
@@ -227,175 +290,267 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   /// DISTRIBUTE BUDGET
   void distributeBudget() {
-    if (goals.isEmpty) return;
+
+    if(goals.isEmpty) return;
 
     double share = widget.remainingBudget / goals.length;
 
     setState(() {
-      for (var g in goals) {
+
+      for(var g in goals){
         g.saved += share;
       }
+
     });
+
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       backgroundColor: const Color(0xFFF6F4FF),
+
       appBar: AppBar(
         backgroundColor: const Color(0xFFF6F4FF),
         elevation: 0,
         centerTitle: true,
-        title: const Text("My Goals", style: TextStyle(color: Colors.black)),
+        title: const Text(
+          "My Goals",
+          style: TextStyle(color: Colors.black),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
+          icon: const Icon(Icons.arrow_back,color: Colors.black),
+          onPressed: (){
             Navigator.pop(context);
           },
         ),
       ),
+
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+
           FloatingActionButton(
             heroTag: "distribute",
             backgroundColor: Colors.green,
             onPressed: distributeBudget,
             child: const Icon(Icons.savings),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height:10),
+
           FloatingActionButton(
             heroTag: "add",
             backgroundColor: Colors.deepPurple,
             onPressed: addGoal,
             child: const Icon(Icons.add),
           ),
+
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(20),
+
         child: ListView(
           children: [
-            if (goals.isNotEmpty)
+
+            if(goals.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(20),
+
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF7B2FF7), Color(0xFF9F5BFF)],
+                    colors: [
+                      Color(0xFF7B2FF7),
+                      Color(0xFF9F5BFF),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Overall Progress",
-                        style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 10),
+
+                    const Text(
+                      "Overall Progress",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+
+                    const SizedBox(height:10),
+
                     Text(
                       "₹${totalSaved.toInt()} / ₹${totalTarget.toInt()}",
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize:24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 10),
+
+                    const SizedBox(height:10),
+
                     LinearProgressIndicator(
-                      value: totalTarget == 0 ? 0 : totalSaved / totalTarget,
+                      value: totalTarget == 0
+                          ? 0
+                          : totalSaved / totalTarget,
                       backgroundColor: Colors.white24,
                       valueColor:
                           const AlwaysStoppedAnimation(Colors.white),
                     ),
+
                   ],
                 ),
               ),
-            const SizedBox(height: 20),
-            ...goals.map((goal) {
+
+            const SizedBox(height:20),
+
+            ...goals.map((goal){
+
               double progress = goal.saved / goal.target;
               double remaining = goal.target - goal.saved;
 
-              int daysLeft = goal.deadline.difference(DateTime.now()).inDays;
+              int daysLeft =
+                  goal.deadline.difference(DateTime.now()).inDays;
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: const EdgeInsets.only(bottom:20),
                 padding: const EdgeInsets.all(16),
+
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
                 ),
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(goal.title,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text("${(progress * 100).toInt()}%",
-                            style: const TextStyle(
-                                color: Colors.deepPurple,
-                                fontWeight: FontWeight.bold)),
+
+                        Text(
+                          goal.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize:16,
+                          ),
+                        ),
+
+                        Text(
+                          "${(progress * 100).toInt()}%",
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+
                       ],
                     ),
-                    const SizedBox(height: 6),
+
+                    const SizedBox(height:6),
+
                     Text(
                       "₹${goal.saved.toInt()} / ₹${goal.target.toInt()}",
                       style: const TextStyle(color: Colors.grey),
                     ),
-                    const SizedBox(height: 10),
+
+                    const SizedBox(height:10),
+
                     LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.grey.shade200,
                       valueColor:
-                          const AlwaysStoppedAnimation(Colors.deepPurple),
+                          const AlwaysStoppedAnimation(
+                              Colors.deepPurple),
                     ),
-                    const SizedBox(height: 10),
-                    Text("₹${goal.monthlyContribution} per month",
-                        style: const TextStyle(color: Colors.deepPurple)),
-                    Text("$daysLeft days left",
-                        style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 10),
+
+                    const SizedBox(height:10),
+
+                    Text(
+                      "₹${goal.monthlyContribution} per month",
+                      style: const TextStyle(color: Colors.deepPurple),
+                    ),
+
+                    Text(
+                      "$daysLeft days left",
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+
+                    const SizedBox(height:10),
+
                     Row(
                       children: [
+
                         ElevatedButton(
-                          onPressed: () {
+                          onPressed: (){
                             editContribution(goal);
                           },
                           child: const Text("Edit Contribution"),
                         ),
+
                         const Spacer(),
+
                         Text(
                           "₹${remaining.toInt()} left",
-                          style: const TextStyle(color: Colors.deepPurple),
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                          ),
                         ),
+
                       ],
                     ),
+
                   ],
                 ),
               );
+
             }),
-            if (goals.isEmpty)
+
+            if(goals.isEmpty)
               Container(
                 padding: const EdgeInsets.all(30),
+
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
+
                 child: const Column(
                   children: [
-                    Icon(Icons.track_changes,
-                        size: 50, color: Colors.deepPurple),
-                    SizedBox(height: 10),
-                    Text("Set New Goals!",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 5),
-                    Text("Tap the + button to add more goals",
-                        style: TextStyle(color: Colors.grey)),
+
+                    Icon(
+                      Icons.track_changes,
+                      size: 50,
+                      color: Colors.deepPurple,
+                    ),
+
+                    SizedBox(height:10),
+
+                    Text(
+                      "Set New Goals!",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    SizedBox(height:5),
+
+                    Text(
+                      "Tap the + button to add more goals",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+
                   ],
                 ),
               ),
+
           ],
         ),
       ),

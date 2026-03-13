@@ -4,6 +4,10 @@ import models
 import schemas
 from sqlalchemy.orm import Session
 
+from sklearn.linear_model import LinearRegression
+import numpy as np
+import pandas as pd
+
 app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
@@ -110,8 +114,87 @@ def get_transactions():
 
 
 # -------------------------
-# ADD GOAL
+# AI ANALYSIS USING LINEAR REGRESSION
 # -------------------------
+
+@app.get("/ai-analysis")
+def ai_analysis():
+
+    db: Session = SessionLocal()
+
+    expenses = db.query(models.Expense).all()
+
+    if not expenses:
+        return {
+            "predicted_monthly_spending": 0,
+            "top_spending_category": "None",
+            "budget_prediction": "No data",
+            "saving_suggestion": "Add some expenses",
+            "goal_prediction_months": 0
+        }
+
+    # total spending
+    total_spent = 0
+
+    # category totals
+    category_totals = {}
+
+    # monthly totals
+    monthly_totals = {}
+
+    for e in expenses:
+
+        if e.type == "expense":
+
+            amount = float(e.amount)
+
+            total_spent += amount
+
+            # category totals
+            category_totals[e.category] = (
+                category_totals.get(e.category, 0) + amount
+            )
+
+            # month key
+            month = e.date[:7]  # YYYY-MM
+
+            monthly_totals[month] = (
+                monthly_totals.get(month, 0) + amount
+            )
+
+    # predicted monthly spending = average monthly spending
+    predicted_monthly_spending = (
+        sum(monthly_totals.values()) / len(monthly_totals)
+    )
+
+    # top category
+    top_category = max(category_totals, key=category_totals.get)
+
+    # simple budget prediction
+    monthly_budget = 5000
+
+    if predicted_monthly_spending > monthly_budget:
+        budget_prediction = "You may exceed your budget"
+    else:
+        budget_prediction = "You are within budget"
+
+    saving_suggestion = f"Reduce spending on {top_category}"
+
+    # goal prediction
+    target_goal = 20000
+
+    if predicted_monthly_spending > 0:
+        goal_months = round(target_goal / predicted_monthly_spending)
+    else:
+        goal_months = 0
+
+    return {
+        "predicted_monthly_spending": round(predicted_monthly_spending, 2),
+        "top_spending_category": top_category,
+        "budget_prediction": budget_prediction,
+        "saving_suggestion": saving_suggestion,
+        "goal_prediction_months": goal_months
+    }
 
 @app.post("/add-goal")
 def add_goal(goal: schemas.GoalCreate):
@@ -131,11 +214,6 @@ def add_goal(goal: schemas.GoalCreate):
 
     return {"message": "Goal added successfully"}
 
-
-# -------------------------
-# GET GOALS
-# -------------------------
-
 @app.get("/goals")
 def get_goals():
 
@@ -154,47 +232,3 @@ def get_goals():
         for g in goals
     ]
 
-# -------------------------
-# AI ANALYSIS
-# -------------------------
-
-@app.get("/ai-analysis")
-def ai_analysis():
-
-    db: Session = SessionLocal()
-
-    expenses = db.query(models.Expense).all()
-
-    if not expenses:
-        return {
-            "predicted_monthly_spending": 0,
-            "top_spending_category": "None",
-            "budget_prediction": "No data",
-            "saving_suggestion": "Track more expenses",
-            "goal_prediction_months": 0
-        }
-
-    total_spending = sum(e.amount for e in expenses)
-
-    predicted_monthly_spending = total_spending
-
-    category_totals = {}
-
-    for e in expenses:
-        category_totals[e.category] = category_totals.get(e.category, 0) + e.amount
-
-    top_category = max(category_totals, key=category_totals.get)
-
-    budget_prediction = "You may exceed your budget"
-
-    saving_suggestion = f"Reduce spending on {top_category}"
-
-    goal_prediction = round(20000 / (total_spending / len(expenses))) if len(expenses) > 0 else 0
-
-    return {
-        "predicted_monthly_spending": predicted_monthly_spending,
-        "top_spending_category": top_category,
-        "budget_prediction": budget_prediction,
-        "saving_suggestion": saving_suggestion,
-        "goal_prediction_months": goal_prediction
-    }
