@@ -4,16 +4,23 @@ class Goal {
   String title;
   double saved;
   double target;
+  double monthlyContribution;
+  DateTime deadline;
 
   Goal({
     required this.title,
     required this.saved,
     required this.target,
+    required this.monthlyContribution,
+    required this.deadline,
   });
 }
 
 class GoalsScreen extends StatefulWidget {
-  const GoalsScreen({super.key});
+
+  final double remainingBudget;
+
+  const GoalsScreen({super.key, required this.remainingBudget});
 
   @override
   State<GoalsScreen> createState() => _GoalsScreenState();
@@ -29,83 +36,212 @@ class _GoalsScreenState extends State<GoalsScreen> {
   double get totalTarget =>
       goals.fold(0, (sum, g) => sum + g.target);
 
+  /// Add Goal
   void addGoal() {
 
     TextEditingController nameController = TextEditingController();
     TextEditingController targetController = TextEditingController();
     TextEditingController savedController = TextEditingController();
+    TextEditingController contributionController = TextEditingController();
+
+    DateTime? selectedDate;
 
     showDialog(
       context: context,
       builder: (context) {
 
-        return AlertDialog(
+        return StatefulBuilder(
+          builder: (context,setStateDialog){
 
-          title: const Text("Add Goal"),
+            return AlertDialog(
 
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+              title: const Text("Add Goal"),
 
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: "Goal Name",
-                ),
-              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
 
-              TextField(
-                controller: targetController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Target Amount",
-                ),
-              ),
-
-              TextField(
-                controller: savedController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Saved Amount",
-                ),
-              ),
-            ],
-          ),
-
-          actions: [
-
-            TextButton(
-              onPressed: (){
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-
-                setState(() {
-
-                  goals.add(
-                    Goal(
-                      title: nameController.text,
-                      target: double.parse(targetController.text),
-                      saved: savedController.text.isEmpty
-                          ? 0
-                          : double.parse(savedController.text),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: "Goal Name",
+                      ),
                     ),
-                  );
 
-                });
+                    TextField(
+                      controller: targetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Target Amount",
+                      ),
+                    ),
 
-                Navigator.pop(context);
-              },
-              child: const Text("Add"),
-            )
-          ],
+                    TextField(
+                      controller: savedController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Saved Amount",
+                      ),
+                    ),
+
+                    TextField(
+                      controller: contributionController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Monthly Contribution",
+                      ),
+                    ),
+
+                    const SizedBox(height:10),
+
+                    Row(
+                      children: [
+
+                        const Text("Deadline: "),
+
+                        Text(
+                          selectedDate == null
+                              ? "Not selected"
+                              : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                        ),
+
+                        const Spacer(),
+
+                        IconButton(
+                          icon: const Icon(Icons.calendar_month),
+                          onPressed: () async {
+
+                            DateTime? picked =
+                                await showDatePicker(
+                              context: context,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2030),
+                              initialDate: DateTime.now(),
+                            );
+
+                            if(picked != null){
+                              setStateDialog(() {
+                                selectedDate = picked;
+                              });
+                            }
+
+                          },
+                        )
+
+                      ],
+                    ),
+
+                  ],
+                ),
+              ),
+
+              actions: [
+
+                TextButton(
+                  onPressed: (){
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Cancel"),
+                ),
+
+                ElevatedButton(
+                  onPressed: () {
+
+                    if(selectedDate == null) return;
+
+                    setState(() {
+
+                      goals.add(
+                        Goal(
+                          title: nameController.text,
+                          target: double.parse(targetController.text),
+                          saved: savedController.text.isEmpty
+                              ? 0
+                              : double.parse(savedController.text),
+                          monthlyContribution:
+                              double.parse(contributionController.text),
+                          deadline: selectedDate!,
+                        ),
+                      );
+
+                    });
+
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Add"),
+                )
+              ],
+            );
+          }
         );
       },
     );
+  }
+
+  /// Edit monthly contribution
+  void editContribution(Goal goal){
+
+    TextEditingController controller =
+        TextEditingController(text: goal.monthlyContribution.toString());
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+
+        title: const Text("Edit Contribution"),
+
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: "Monthly Contribution",
+          ),
+        ),
+
+        actions: [
+
+          TextButton(
+            onPressed: (){
+              Navigator.pop(context);
+            },
+            child: const Text("Cancel"),
+          ),
+
+          ElevatedButton(
+            onPressed: (){
+              setState(() {
+                goal.monthlyContribution =
+                    double.tryParse(controller.text) ??
+                        goal.monthlyContribution;
+              });
+
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          )
+
+        ],
+
+      ),
+    );
+
+  }
+
+  /// Distribute remaining budget equally
+  void distributeBudget(){
+
+    if(goals.isEmpty) return;
+
+    double share = widget.remainingBudget / goals.length;
+
+    setState(() {
+
+      for(var g in goals){
+        g.saved += share;
+      }
+
+    });
+
   }
 
   @override
@@ -130,10 +266,27 @@ class _GoalsScreenState extends State<GoalsScreen> {
         ),
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepPurple,
-        onPressed: addGoal,
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+
+          FloatingActionButton(
+            heroTag: "distribute",
+            backgroundColor: Colors.green,
+            onPressed: distributeBudget,
+            child: const Icon(Icons.savings),
+          ),
+
+          const SizedBox(height:10),
+
+          FloatingActionButton(
+            heroTag: "add",
+            backgroundColor: Colors.deepPurple,
+            onPressed: addGoal,
+            child: const Icon(Icons.add),
+          ),
+
+        ],
       ),
 
       body: Padding(
@@ -142,7 +295,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         child: ListView(
           children: [
 
-            /// OVERALL PROGRESS CARD
+            /// OVERALL PROGRESS
             if(goals.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(20),
@@ -192,11 +345,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
             const SizedBox(height:20),
 
-            /// GOAL CARDS
+            /// GOALS
             ...goals.map((goal){
 
               double progress = goal.saved / goal.target;
               double remaining = goal.target - goal.saved;
+
+              int daysLeft =
+                  goal.deadline.difference(DateTime.now()).inDays;
 
               return Container(
                 margin: const EdgeInsets.only(bottom:20),
@@ -255,11 +411,43 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     const SizedBox(height:10),
 
                     Text(
-                      "You're just ₹${remaining.toInt()} away!",
+                      "₹${goal.monthlyContribution} per month",
                       style: const TextStyle(
                         color: Colors.deepPurple,
                       ),
                     ),
+
+                    Text(
+                      "$daysLeft days left",
+                      style: const TextStyle(
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                    const SizedBox(height:10),
+
+                    Row(
+                      children: [
+
+                        ElevatedButton(
+                          onPressed: (){
+                            editContribution(goal);
+                          },
+                          child: const Text("Edit Contribution"),
+                        ),
+
+                        const Spacer(),
+
+                        Text(
+                          "₹${remaining.toInt()} left",
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                          ),
+                        )
+
+                      ],
+                    )
+
                   ],
                 ),
               );

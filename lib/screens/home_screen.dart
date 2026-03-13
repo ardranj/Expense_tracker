@@ -5,6 +5,7 @@ import 'goals_screen.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
+
   final String userEmail;
 
   const HomeScreen({super.key, required this.userEmail});
@@ -15,69 +16,173 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
-  double budget = 0;
+  String userName = "User";
+  String userEmail = "";
+  String userPhone = "";
+
+  double monthlyBudget = 0;
   double spending = 0;
   double balance = 0;
 
+  DateTime budgetMonth = DateTime.now();
+
+  int notificationCount = 0;
+  int badgeCount = 0;
+
+  List<String> notifications = [];
   List<Map<String,dynamic>> transactions = [];
 
+  @override
+  void initState() {
+    super.initState();
+    userEmail = widget.userEmail;
+  }
+
+  /// Add notification
+  void addNotification(String message){
+    setState(() {
+      notifications.add(message);
+      notificationCount++;
+    });
+  }
+
+  /// Earn badge
+  void earnBadge(String reason){
+    setState(() {
+      badgeCount++;
+      notifications.add("🏆 Badge earned: $reason");
+      notificationCount++;
+    });
+  }
+
+  /// Reset monthly budget
+  void checkMonthlyReset(){
+
+    DateTime now = DateTime.now();
+
+    if(now.month != budgetMonth.month || now.year != budgetMonth.year){
+
+      setState(() {
+        monthlyBudget = 0;
+        spending = 0;
+        budgetMonth = now;
+      });
+
+      addNotification("New month started. Please set your monthly budget.");
+    }
+
+  }
+
+  /// Set monthly budget
   void setBudget(){
 
     TextEditingController controller =
-        TextEditingController(text: budget.toString());
+        TextEditingController(text: monthlyBudget.toString());
 
     showDialog(
       context: context,
-      builder: (context){
+      builder: (_) => AlertDialog(
 
-        return AlertDialog(
+        title: const Text("Set Monthly Budget"),
 
-          title: const Text("Set Monthly Budget"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: "Enter budget",
+          ),
+        ),
 
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: "Enter budget"
+        actions: [
+
+          TextButton(
+            onPressed: (){
+              Navigator.pop(context);
+            },
+            child: const Text("Cancel"),
+          ),
+
+          ElevatedButton(
+            onPressed: (){
+
+              setState(() {
+
+                monthlyBudget =
+                    double.tryParse(controller.text) ?? monthlyBudget;
+
+                budgetMonth = DateTime.now();
+
+              });
+
+              addNotification("Budget updated to ₹$monthlyBudget");
+
+              Navigator.pop(context);
+
+            },
+            child: const Text("Save"),
+          )
+
+        ],
+
+      ),
+    );
+
+  }
+
+  /// Show notifications
+  void showNotifications(){
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+
+          const Text(
+            "Notifications",
+            style: TextStyle(
+              fontSize:18,
+              fontWeight: FontWeight.bold,
             ),
           ),
 
-          actions: [
+          const SizedBox(height:10),
 
-            TextButton(
-              onPressed: (){
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
+          if(notifications.isEmpty)
+            const Text("No notifications yet"),
 
-            ElevatedButton(
-              onPressed: (){
+          ...notifications.map((n)=>ListTile(
+            leading: const Icon(Icons.notifications),
+            title: Text(n),
+          ))
 
-                setState(() {
-                  budget = double.tryParse(controller.text) ?? budget;
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      }
+        ],
+      ),
     );
+
+    setState(() {
+      notificationCount = 0;
+    });
+
   }
 
   @override
   Widget build(BuildContext context) {
 
-    double remaining = budget - spending;
-    double progress = budget == 0 ? 0 : spending / budget;
+    checkMonthlyReset();
+
+    double remaining = monthlyBudget - spending;
+
+    double progress = monthlyBudget == 0
+        ? 0
+        : spending / monthlyBudget;
 
     return Scaffold(
+
       backgroundColor: const Color(0xFFF6F4FF),
 
       floatingActionButton: FloatingActionButton(
+
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.add),
 
@@ -102,19 +207,27 @@ class _HomeScreenState extends State<HomeScreen> {
               if(isExpense){
                 spending += amount;
                 balance -= amount;
-              } else {
+              }else{
                 balance += amount;
               }
 
+              if(spending <= monthlyBudget){
+                earnBadge("Stayed within budget");
+              }
+
             });
+
           }
+
         },
+
       ),
 
       floatingActionButtonLocation:
-          FloatingActionButtonLocation.centerDocked,
+      FloatingActionButtonLocation.centerDocked,
 
       bottomNavigationBar: BottomAppBar(
+
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
 
@@ -123,12 +236,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
             children: [
 
               const _BottomItem(
                 icon: Icons.home,
                 label: "Home",
-                active: true
+                active: true,
               ),
 
               GestureDetector(
@@ -149,12 +263,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(width:40),
 
+              /// GOALS
               GestureDetector(
                 onTap: (){
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const GoalsScreen(),
+                      builder: (_) => GoalsScreen(
+                        remainingBudget: monthlyBudget - spending,
+                      ),
                     ),
                   );
                 },
@@ -164,12 +281,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+              /// PROFILE
               GestureDetector(
                 onTap: (){
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const ProfileScreen(),
+                      builder: (_) => ProfileScreen(
+                        userName: userName,
+                        userEmail: userEmail,
+                        userPhone: userPhone,
+                        monthlyBudget: monthlyBudget,
+                      ),
                     ),
                   );
                 },
@@ -178,29 +301,100 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: "Profile",
                 ),
               ),
+
             ],
+
           ),
+
         ),
+
       ),
 
       body: SafeArea(
+
         child: Padding(
           padding: const EdgeInsets.all(20),
 
           child: ListView(
+
             children: [
 
-              Text(
-                "Hey ${widget.userEmail} 👋",
-                style: const TextStyle(
-                  fontSize:22,
-                  fontWeight: FontWeight.bold,
-                ),
+              /// Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                children: [
+
+                  Text(
+                    "Hey $userName 👋",
+                    style: const TextStyle(
+                      fontSize:22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  Stack(
+                    children: [
+
+                      IconButton(
+                        icon: const Icon(Icons.notifications),
+                        onPressed: showNotifications,
+                      ),
+
+                      if(notificationCount > 0)
+                        Positioned(
+                          right:6,
+                          top:6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              notificationCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize:10,
+                              ),
+                            ),
+                          ),
+                        )
+
+                    ],
+                  )
+
+                ],
               ),
 
               const SizedBox(height:20),
 
+              /// Badge counter
+              Row(
+                children: [
+
+                  const Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber,
+                  ),
+
+                  const SizedBox(width:8),
+
+                  Text(
+                    "Badges: $badgeCount",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+
+                ],
+              ),
+
+              const SizedBox(height:20),
+
+              /// Spending card
               Container(
+
                 padding: const EdgeInsets.all(20),
 
                 decoration: BoxDecoration(
@@ -215,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
 
                     const Text(
@@ -237,13 +432,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     Row(
                       mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      MainAxisAlignment.spaceBetween,
+
                       children: [
 
                         GestureDetector(
                           onTap: setBudget,
                           child: Text(
-                            "Budget\n₹$budget",
+                            "Budget\n₹$monthlyBudget",
                             style: const TextStyle(color: Colors.white70),
                           ),
                         ),
@@ -253,6 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           textAlign: TextAlign.right,
                           style: const TextStyle(color: Colors.white70),
                         ),
+
                       ],
                     ),
 
@@ -262,14 +459,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: progress,
                       backgroundColor: Colors.white30,
                       valueColor:
-                          const AlwaysStoppedAnimation(Colors.white),
-                    ),
+                      const AlwaysStoppedAnimation(Colors.white),
+                    )
+
                   ],
+
                 ),
+
               ),
 
               const SizedBox(height:20),
 
+              /// Current Balance
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -289,6 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                 ],
               ),
 
@@ -308,36 +510,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 bool isExpense = t["isExpense"] ?? false;
                 double amount = (t["amount"] ?? 0).toDouble();
-                String category = (t["category"] ?? "Transaction").toString();
+                String category =
+                    (t["category"] ?? "Transaction").toString();
 
                 return Card(
                   child: ListTile(
+
                     title: Text(category),
 
                     trailing: Text(
+
                       isExpense
                           ? "-₹$amount"
                           : "+₹$amount",
+
                       style: TextStyle(
                         color: isExpense
                             ? Colors.red
                             : Colors.green,
                         fontWeight: FontWeight.bold,
                       ),
+
                     ),
+
                   ),
                 );
 
-              }).toList(),
+              }).toList()
+
             ],
+
           ),
+
         ),
+
       ),
+
     );
+
   }
+
 }
 
 class _BottomItem extends StatelessWidget {
+
   final IconData icon;
   final String label;
   final bool active;
@@ -353,6 +569,7 @@ class _BottomItem extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+
       children: [
 
         Icon(
@@ -371,7 +588,11 @@ class _BottomItem extends StatelessWidget {
                 : Colors.grey,
           ),
         ),
+
       ],
+
     );
+
   }
+
 }

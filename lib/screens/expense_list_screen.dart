@@ -479,7 +479,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   const SizedBox(height:8),
 
                   const Text(
-                    "💡 Set daily limits   🍽 Meal prep   📊 Keep tracking!",
+                    "💡 Set your goals   📊 Keep tracking!",
                     style: TextStyle(color: Colors.black54),
                   ),
 
