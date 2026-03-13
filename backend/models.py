@@ -30,5 +30,18 @@ class Expense(Base):
     amount = Column(Float)
 
     type = Column(String)
-
+    
     date = Column(String)
+
+
+# NEW TABLE
+class Goal(Base):
+
+    __tablename__ = "goals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    target = Column(Float)
+    saved = Column(Float)
+    monthlyContribution = Column(Float)
+    deadline = Column(String)

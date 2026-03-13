@@ -31,7 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.5
-  
+  fl_chart: ^0.66.0
+  shared_preferences: ^2.5.4
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -40,7 +41,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  fl_chart: ^0.66.0
+  
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

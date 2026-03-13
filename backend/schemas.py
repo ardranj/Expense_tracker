@@ -16,9 +16,18 @@ class UserLogin(BaseModel):
 
 
 class ExpenseCreate(BaseModel):
-
+    
     title: str
     category: str
     amount: float
     type: str
     date: str
+
+
+# NEW GOAL SCHEMA
+class GoalCreate(BaseModel):
+    title: str
+    target: float
+    saved: float
+    monthlyContribution: float
+    deadline: str

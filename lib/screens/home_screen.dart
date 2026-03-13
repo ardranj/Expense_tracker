@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'add_expense_screen.dart';
 import 'expense_list_screen.dart';
 import 'goals_screen.dart';
@@ -36,44 +39,134 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     userEmail = widget.userEmail;
+    loadSavedData();
   }
 
-  /// Add notification
-  void addNotification(String message){
-    setState(() {
-      notifications.add(message);
-      notificationCount++;
-    });
-  }
+  /// RECALCULATE FINANCE
+  void recalculateFinance(){
 
-  /// Earn badge
-  void earnBadge(String reason){
-    setState(() {
-      badgeCount++;
-      notifications.add("🏆 Badge earned: $reason");
-      notificationCount++;
-    });
-  }
+    spending = 0;
+    balance = 0;
 
-  /// Reset monthly budget
-  void checkMonthlyReset(){
+    for(var t in transactions){
 
-    DateTime now = DateTime.now();
+      String type = t["type"] ?? "income";
+      double amount = (t["amount"] ?? 0).toDouble();
 
-    if(now.month != budgetMonth.month || now.year != budgetMonth.year){
+      if(type == "expense"){
+        spending += amount;
+        balance -= amount;
+      }else{
+        balance += amount;
+      }
 
-      setState(() {
-        monthlyBudget = 0;
-        spending = 0;
-        budgetMonth = now;
-      });
-
-      addNotification("New month started. Please set your monthly budget.");
     }
 
   }
 
-  /// Set monthly budget
+  /// LOAD SAVED DATA
+  Future<void> loadSavedData() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+
+      monthlyBudget = prefs.getDouble("budget") ?? 0;
+
+      badgeCount = prefs.getInt("badges") ?? 0;
+
+      notifications =
+          prefs.getStringList("notifications") ?? [];
+
+      String? tx = prefs.getString("transactions");
+
+      if(tx != null){
+
+        List list = jsonDecode(tx);
+
+        transactions =
+            List<Map<String,dynamic>>.from(list);
+
+      }
+
+      recalculateFinance();
+
+    });
+
+  }
+
+  /// SAVE DATA
+  Future<void> saveData() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    prefs.setDouble("budget", monthlyBudget);
+
+    prefs.setInt("badges", badgeCount);
+
+    prefs.setStringList("notifications", notifications);
+
+    prefs.setString(
+      "transactions",
+      jsonEncode(transactions),
+    );
+
+  }
+
+  /// ADD NOTIFICATION
+  void addNotification(String message){
+
+    setState(() {
+
+      notifications.add(message);
+      notificationCount++;
+
+    });
+
+    saveData();
+
+  }
+
+  /// EARN BADGE
+  void earnBadge(String reason){
+
+    setState(() {
+
+      badgeCount++;
+
+      notifications.add("🏆 Badge earned: $reason");
+      notificationCount++;
+
+    });
+
+    saveData();
+
+  }
+
+  /// RESET MONTH
+  void checkMonthlyReset(){
+
+    DateTime now = DateTime.now();
+
+    if(now.month != budgetMonth.month ||
+        now.year != budgetMonth.year){
+
+      setState(() {
+
+        monthlyBudget = 0;
+        spending = 0;
+        budgetMonth = now;
+
+      });
+
+      addNotification(
+          "New month started. Please set your monthly budget.");
+
+    }
+
+  }
+
+  /// SET BUDGET
   void setBudget(){
 
     TextEditingController controller =
@@ -108,13 +201,17 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() {
 
                 monthlyBudget =
-                    double.tryParse(controller.text) ?? monthlyBudget;
+                    double.tryParse(controller.text)
+                    ?? monthlyBudget;
 
                 budgetMonth = DateTime.now();
 
               });
 
-              addNotification("Budget updated to ₹$monthlyBudget");
+              addNotification(
+                  "Budget updated to ₹$monthlyBudget");
+
+              saveData();
 
               Navigator.pop(context);
 
@@ -129,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   }
 
-  /// Show notifications
+  /// SHOW NOTIFICATIONS
   void showNotifications(){
 
     showModalBottomSheet(
@@ -201,21 +298,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
               transactions.add(result);
 
-              bool isExpense = result["isExpense"] ?? false;
-              double amount = (result["amount"] ?? 0).toDouble();
-
-              if(isExpense){
-                spending += amount;
-                balance -= amount;
-              }else{
-                balance += amount;
-              }
+              recalculateFinance();
 
               if(spending <= monthlyBudget){
                 earnBadge("Stayed within budget");
               }
 
             });
+
+            saveData();
 
           }
 
@@ -251,7 +342,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          ExpenseListScreen(transactions: transactions),
+                          ExpenseListScreen(
+                              transactions: transactions),
                     ),
                   );
                 },
@@ -263,14 +355,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(width:40),
 
-              /// GOALS
               GestureDetector(
                 onTap: (){
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => GoalsScreen(
-                        remainingBudget: monthlyBudget - spending,
+                        remainingBudget:
+                        monthlyBudget - spending,
                       ),
                     ),
                   );
@@ -281,7 +373,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              /// PROFILE
               GestureDetector(
                 onTap: (){
                   Navigator.push(
@@ -319,9 +410,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             children: [
 
-              /// Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
 
                 children: [
 
@@ -337,7 +428,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
 
                       IconButton(
-                        icon: const Icon(Icons.notifications),
+                        icon: const Icon(
+                            Icons.notifications),
                         onPressed: showNotifications,
                       ),
 
@@ -346,13 +438,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           right:6,
                           top:6,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
+                            padding:
+                            const EdgeInsets.all(4),
+                            decoration:
+                            const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
                             child: Text(
-                              notificationCount.toString(),
+                              notificationCount
+                                  .toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize:10,
@@ -369,7 +464,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height:20),
 
-              /// Badge counter
               Row(
                 children: [
 
@@ -392,7 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height:20),
 
-              /// Spending card
               Container(
 
                 padding: const EdgeInsets.all(20),
@@ -404,17 +497,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       Color(0xFF9F5BFF)
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius:
+                  BorderRadius.circular(20),
                 ),
 
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
 
                   children: [
 
                     const Text(
                       "This Month’s Spending",
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                          color: Colors.white70),
                     ),
 
                     const SizedBox(height:6),
@@ -440,14 +536,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           onTap: setBudget,
                           child: Text(
                             "Budget\n₹$monthlyBudget",
-                            style: const TextStyle(color: Colors.white70),
+                            style: const TextStyle(
+                                color: Colors.white70),
                           ),
                         ),
 
                         Text(
                           "Remaining\n₹$remaining",
                           textAlign: TextAlign.right,
-                          style: const TextStyle(color: Colors.white70),
+                          style: const TextStyle(
+                              color: Colors.white70),
                         ),
 
                       ],
@@ -457,9 +555,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.white30,
+                      backgroundColor:
+                      Colors.white30,
                       valueColor:
-                      const AlwaysStoppedAnimation(Colors.white),
+                      const AlwaysStoppedAnimation(
+                          Colors.white),
                     )
 
                   ],
@@ -470,9 +570,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height:20),
 
-              /// Current Balance
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
                 children: [
 
                   const Text(
@@ -508,10 +608,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
               ...transactions.map((t){
 
-                bool isExpense = t["isExpense"] ?? false;
-                double amount = (t["amount"] ?? 0).toDouble();
+                String type = t["type"] ?? "income";
+
+                double amount =
+                    (t["amount"] ?? 0).toDouble();
+
                 String category =
-                    (t["category"] ?? "Transaction").toString();
+                    (t["category"] ?? "Transaction")
+                        .toString();
+
+                bool isExpense = type == "expense";
 
                 return Card(
                   child: ListTile(
@@ -528,7 +634,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: isExpense
                             ? Colors.red
                             : Colors.green,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                        FontWeight.bold,
                       ),
 
                     ),
