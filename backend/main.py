@@ -197,10 +197,18 @@ def ai_analysis(email: str, budget: float, goal: float):
 
     monthly_savings = monthly_budget - monthly_spending
 
-    if monthly_savings > 0:
-        goal_months = round(target_goal / monthly_savings)
+# assume user already saved some money toward goal
+    goal_saved = 0
+    for e in expenses:
+        if e.type == "income":
+            goal_saved += float(e.amount)
+
+    remaining_goal = target_goal - goal_saved
+
+    if monthly_savings > 0 and remaining_goal > 0:
+        goal_months = round(remaining_goal / monthly_savings)
     else:
-        goal_months = -1
+        goal_months = 0
 
     return {
         "predicted_monthly_spending": round(predicted_spending, 2),

@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String userName = "User";
   String userEmail = "";
 
-  double monthlyBudget = 0;
+  double monthlyBudget = 5000;
   double spending = 0;
   double balance = 0;
   double goalAmount = 0;

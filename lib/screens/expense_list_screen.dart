@@ -385,9 +385,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: const [
+              child: Wrap(
+  alignment: WrapAlignment.center,
+  spacing: 15,
+  runSpacing: 8,
+  children: [
 
                   Row(
                     children: [
