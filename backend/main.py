@@ -8,6 +8,19 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import pandas as pd
 
+# Load dataset
+data = pd.read_csv("expense_training_dataset.csv")
+
+# Features
+X = data[["food","transport","education","shopping","other"]]
+
+# Target
+y = data["total_expense"]
+
+# Train model
+model = LinearRegression()
+model.fit(X, y)
+
 app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
@@ -133,14 +146,7 @@ def ai_analysis():
             "goal_prediction_months": 0
         }
 
-    # total spending
-    total_spent = 0
-
-    # category totals
     category_totals = {}
-
-    # monthly totals
-    monthly_totals = {}
 
     for e in expenses:
 
@@ -148,48 +154,47 @@ def ai_analysis():
 
             amount = float(e.amount)
 
-            total_spent += amount
-
-            # category totals
             category_totals[e.category] = (
                 category_totals.get(e.category, 0) + amount
             )
 
-            # month key
-            month = e.date[:7]  # YYYY-MM
+    # -----------------------
+    # Prepare model input
+    # -----------------------
 
-            monthly_totals[month] = (
-                monthly_totals.get(month, 0) + amount
-            )
+    food = category_totals.get("Food",0)
+    transport = category_totals.get("Transport",0)
+    education = category_totals.get("Education",0)
+    shopping = category_totals.get("Shopping",0)
+    other = category_totals.get("Other",0)
 
-    # predicted monthly spending = average monthly spending
-    predicted_monthly_spending = (
-        sum(monthly_totals.values()) / len(monthly_totals)
-    )
+    # Predict spending using trained model
+    predicted_spending = model.predict([[food,transport,education,shopping,other]])[0]
 
-    # top category
+    # -----------------------
+    # Insights
+    # -----------------------
+
     top_category = max(category_totals, key=category_totals.get)
 
-    # simple budget prediction
     monthly_budget = 5000
 
-    if predicted_monthly_spending > monthly_budget:
+    if predicted_spending > monthly_budget:
         budget_prediction = "You may exceed your budget"
     else:
         budget_prediction = "You are within budget"
 
     saving_suggestion = f"Reduce spending on {top_category}"
 
-    # goal prediction
     target_goal = 20000
 
-    if predicted_monthly_spending > 0:
-        goal_months = round(target_goal / predicted_monthly_spending)
+    if predicted_spending > 0:
+        goal_months = round(target_goal / predicted_spending)
     else:
         goal_months = 0
 
     return {
-        "predicted_monthly_spending": round(predicted_monthly_spending, 2),
+        "predicted_monthly_spending": round(predicted_spending, 2),
         "top_spending_category": top_category,
         "budget_prediction": budget_prediction,
         "saving_suggestion": saving_suggestion,
@@ -231,4 +236,51 @@ def get_goals():
         }
         for g in goals
     ]
+
+# -------------------------
+# GET USER PROFILE
+# -------------------------
+
+@app.get("/profile/{email}")
+def get_profile(email: str):
+
+    db = SessionLocal()
+
+    user = db.query(models.User).filter(
+        models.User.email == email
+    ).first()
+
+    if not user:
+        return {"error": "User not found"}
+
+    return {
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone
+    }
+
+
+# -------------------------
+# UPDATE USER PROFILE
+# -------------------------
+
+@app.put("/update-profile")
+def update_profile(user: schemas.UserCreate):
+
+    db = SessionLocal()
+
+    existing_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if not existing_user:
+        return {"error": "User not found"}
+
+    existing_user.name = user.name
+    existing_user.phone = user.phone
+    existing_user.password = user.password
+
+    db.commit()
+
+    return {"message": "Profile updated successfully"}
 

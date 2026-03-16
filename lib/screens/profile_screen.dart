@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class ProfileScreen extends StatefulWidget {
 
@@ -26,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String phone;
   late double budget;
 
+  String apiUrl = "http://192.168.1.38:8000";
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +38,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     email = widget.userEmail;
     phone = widget.userPhone;
     budget = widget.monthlyBudget;
+
+    loadProfile();
+  }
+
+  /// LOAD PROFILE FROM BACKEND
+  Future<void> loadProfile() async {
+
+    try {
+
+      var response = await http.get(
+        Uri.parse("$apiUrl/profile/$email"),
+      );
+
+      if(response.statusCode == 200){
+
+        var data = jsonDecode(response.body);
+
+        setState(() {
+          name = data["name"];
+          email = data["email"];
+          phone = data["phone"];
+        });
+
+      }
+
+    } catch(e){
+      print(e);
+    }
+
+  }
+
+  /// UPDATE PROFILE IN BACKEND
+  Future<void> updateProfile(
+      String newName,
+      String newEmail,
+      String newPhone
+      ) async {
+
+    try {
+
+      await http.put(
+        Uri.parse("$apiUrl/update-profile"),
+        headers: {"Content-Type":"application/json"},
+        body: jsonEncode({
+          "name": newName,
+          "email": newEmail,
+          "phone": newPhone,
+          "password": "123456"
+        }),
+      );
+
+    } catch(e){
+      print(e);
+    }
+
   }
 
   void editProfile(){
@@ -102,14 +161,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
 
           ElevatedButton(
-            onPressed: (){
+            onPressed: () async {
+
+              String newName = nameController.text;
+              String newEmail = emailController.text;
+              String newPhone = phoneController.text;
+              double newBudget =
+                  double.tryParse(budgetController.text) ?? budget;
+
+              await updateProfile(newName,newEmail,newPhone);
 
               setState(() {
 
-                name = nameController.text;
-                email = emailController.text;
-                phone = phoneController.text;
-                budget = double.tryParse(budgetController.text) ?? budget;
+                name = newName;
+                email = newEmail;
+                phone = newPhone;
+                budget = newBudget;
 
               });
 
@@ -220,3 +287,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
