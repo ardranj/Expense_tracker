@@ -59,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         transactions = List<Map<String,dynamic>>.from(data);
 
         calculateFinance();
+        updateBadges();
 
         setState(() {});
 

@@ -148,11 +148,13 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     double total = totalExpense;
 
     Map<String,Color> colors = {
-      "Shopping": Colors.grey,
-      "Food": Colors.orange,
-      "Transport": Colors.blue,
-    };
-
+  "Shopping": Colors.grey,
+  "Food": Colors.orange,
+  "Transport": Colors.blue,
+  "Education": Colors.purple,
+  "Salary": Colors.green,
+  "Other": Colors.red,
+};
     return data.entries.map((e){
 
       double percent = (e.value / total) * 100;
@@ -408,6 +410,14 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                       CircleAvatar(radius:6, backgroundColor: Colors.blue),
                       SizedBox(width:6),
                       Text("Transport"),
+                    ],
+                  ),
+
+                  Row(
+                    children: [
+                      CircleAvatar(radius:6, backgroundColor: Colors.purple),
+                      SizedBox(width:6),
+                      Text("Education"),
                     ],
                   ),
 
