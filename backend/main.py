@@ -94,7 +94,8 @@ def add_expense(expense: schemas.ExpenseCreate):
         category=expense.category,
         amount=expense.amount,
         type=expense.type,
-        date=expense.date
+        date=expense.date,
+        user_email=expense.user_email
     )
 
     db.add(new_expense)
@@ -107,12 +108,14 @@ def add_expense(expense: schemas.ExpenseCreate):
 # GET TRANSACTIONS
 # -------------------------
 
-@app.get("/transactions")
-def get_transactions():
+@app.get("/transactions/{email}")
+def get_transactions(email: str):
 
     db = SessionLocal()
 
-    expenses = db.query(models.Expense).all()
+    expenses = db.query(models.Expense).filter(
+        models.Expense.user_email == email
+    ).all()
 
     return [
         {
@@ -130,12 +133,14 @@ def get_transactions():
 # AI ANALYSIS USING LINEAR REGRESSION
 # -------------------------
 
-@app.get("/ai-analysis")
-def ai_analysis():
+@app.get("/ai-analysis/{email}")
+def ai_analysis(email: str, budget: float, goal: float):
 
     db: Session = SessionLocal()
 
-    expenses = db.query(models.Expense).all()
+    expenses = db.query(models.Expense).filter(
+        models.Expense.user_email == email
+    ).all()
 
     if not expenses:
         return {
@@ -158,26 +163,26 @@ def ai_analysis():
                 category_totals.get(e.category, 0) + amount
             )
 
-    # -----------------------
-    # Prepare model input
-    # -----------------------
-
     food = category_totals.get("Food",0)
     transport = category_totals.get("Transport",0)
     education = category_totals.get("Education",0)
     shopping = category_totals.get("Shopping",0)
     other = category_totals.get("Other",0)
 
-    # Predict spending using trained model
-    predicted_spending = model.predict([[food,transport,education,shopping,other]])[0]
+    try:
+        predicted_spending = model.predict(
+            [[food,transport,education,shopping,other]]
+        )[0]
+    except:
+        predicted_spending = 0
 
-    # -----------------------
-    # Insights
-    # -----------------------
+    if category_totals:
+        top_category = max(category_totals, key=category_totals.get)
+    else:
+        top_category = "None"
 
-    top_category = max(category_totals, key=category_totals.get)
-
-    monthly_budget = 5000
+    monthly_budget = budget
+    target_goal = goal
 
     if predicted_spending > monthly_budget:
         budget_prediction = "You may exceed your budget"
@@ -186,19 +191,23 @@ def ai_analysis():
 
     saving_suggestion = f"Reduce spending on {top_category}"
 
-    target_goal = 20000
+    monthly_spending = sum(
+        float(e.amount) for e in expenses if e.type == "expense"
+    )
 
-    if predicted_spending > 0:
-        goal_months = round(target_goal / predicted_spending)
+    monthly_savings = monthly_budget - monthly_spending
+
+    if monthly_savings > 0:
+        goal_months = round(target_goal / monthly_savings)
     else:
-        goal_months = 0
+        goal_months = -1
 
     return {
         "predicted_monthly_spending": round(predicted_spending, 2),
         "top_spending_category": top_category,
         "budget_prediction": budget_prediction,
         "saving_suggestion": saving_suggestion,
-        "goal_prediction_months": goal_months
+        "goal_prediction_months": int(goal_months)
     }
 
 @app.post("/add-goal")

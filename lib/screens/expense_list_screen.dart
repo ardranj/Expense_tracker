@@ -4,9 +4,19 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 
 class ExpenseListScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> transactions;
 
-  const ExpenseListScreen({super.key, required this.transactions});
+  final List<Map<String,dynamic>> transactions;
+  final String userEmail;
+  final double monthlyBudget;
+  final double goalAmount;
+
+  const ExpenseListScreen({
+    super.key,
+    required this.transactions,
+    required this.userEmail,
+    required this.monthlyBudget,
+    required this.goalAmount,
+  });
 
   @override
   State<ExpenseListScreen> createState() => _ExpenseListScreenState();
@@ -29,12 +39,14 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Future<void> loadAIInsights() async {
-
     try {
 
-      var response =
-      await http.get(Uri.parse("$apiUrl/ai-analysis"));
-
+      final response = await http.get(
+  Uri.parse(
+    "$apiUrl/ai-analysis/${widget.userEmail}?budget=${widget.monthlyBudget}&goal=${widget.goalAmount}"
+  ),
+);
+      
       if(response.statusCode == 200){
 
         var data = jsonDecode(response.body);

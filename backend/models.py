@@ -33,6 +33,8 @@ class Expense(Base):
     
     date = Column(String)
 
+    user_email = Column(String)
+
 
 # NEW TABLE
 class Goal(Base):

@@ -22,6 +22,7 @@ class ExpenseCreate(BaseModel):
     amount: float
     type: str
     date: str
+    user_email: str
 
 
 # NEW GOAL SCHEMA

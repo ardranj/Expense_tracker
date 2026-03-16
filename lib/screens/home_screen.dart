@@ -22,9 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String userName = "User";
   String userEmail = "";
 
-  double monthlyBudget = 5000;
+  double monthlyBudget = 0;
   double spending = 0;
   double balance = 0;
+  double goalAmount = 0;
 
   int badgeCount = 0;
 
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     userEmail = widget.userEmail;
 
     loadTransactions();
+    loadGoal();
   }
 
   /// LOAD TRANSACTIONS FROM BACKEND
@@ -47,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
 
       var response = await http.get(
-        Uri.parse("$apiUrl/transactions"),
+        Uri.parse("$apiUrl/transactions/$userEmail"),
       );
 
       if(response.statusCode == 200){
@@ -57,6 +59,33 @@ class _HomeScreenState extends State<HomeScreen> {
         transactions = List<Map<String,dynamic>>.from(data);
 
         calculateFinance();
+
+        setState(() {});
+
+      }
+
+    } catch(e){
+      print(e);
+    }
+
+  }
+
+  /// LOAD GOAL FROM BACKEND
+  Future<void> loadGoal() async {
+
+    try {
+
+      var response = await http.get(
+        Uri.parse("$apiUrl/goals/$userEmail"),
+      );
+
+      if(response.statusCode == 200){
+
+        List data = jsonDecode(response.body);
+
+        if(data.isNotEmpty){
+          goalAmount = data[0]["target"];
+        }
 
         setState(() {});
 
@@ -87,6 +116,57 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
     }
+
+  }
+
+  /// BADGE SYSTEM
+  void updateBadges(){
+
+    if(transactions.length >= 20){
+      badgeCount = 3;
+    }
+    else if(transactions.length >= 10){
+      badgeCount = 2;
+    }
+    else if(transactions.length >= 5){
+      badgeCount = 1;
+    }
+    else{
+      badgeCount = 0;
+    }
+
+  }
+
+  /// NOTIFICATIONS
+  void showNotifications(){
+
+    String message = "";
+
+    if(spending > monthlyBudget){
+      message = "⚠️ You exceeded your monthly budget!";
+    }
+    else if(spending > monthlyBudget * 0.8){
+      message = "⚠️ You are close to your budget limit.";
+    }
+    else{
+      message = "✅ Your spending is under control.";
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Notification"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: (){
+              Navigator.pop(context);
+            },
+            child: const Text("OK"),
+          )
+        ],
+      ),
+    );
 
   }
 
@@ -162,11 +242,16 @@ class _HomeScreenState extends State<HomeScreen> {
           var result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const AddExpenseScreen(),
+              builder: (_) => AddExpenseScreen(
+                  userEmail: userEmail,
+              ),
             ),
           );
 
           if(result != null){
+
+            /// attach user email to transaction
+            result["user_email"] = userEmail;
 
             await http.post(
               Uri.parse("$apiUrl/add-expense"),
@@ -204,8 +289,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        ExpenseListScreen(transactions: transactions),
+                    builder: (_) => ExpenseListScreen(
+                      transactions: transactions,
+                      userEmail: userEmail,
+                      monthlyBudget: monthlyBudget,
+                      goalAmount: goalAmount,
+                    ),
                   ),
                 );
               },
@@ -485,3 +574,4 @@ class _BottomItem extends StatelessWidget {
     );
   }
 }
+

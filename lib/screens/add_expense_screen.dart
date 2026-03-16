@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({super.key});
+
+  final String userEmail;
+
+  const AddExpenseScreen({
+    super.key,
+    required this.userEmail,
+  });
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -43,6 +49,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       "amount": amount,
       "type": isExpense ? "expense" : "income",
       "date": selectedDate.toIso8601String(),
+      "user_email": widget.userEmail,
     };
 
     Navigator.pop(context, transaction);
