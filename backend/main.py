@@ -300,5 +300,3 @@ def update_profile(user: schemas.UserCreate):
     db.commit()
 
     return {"message": "Profile updated successfully"}
-
-
