@@ -301,3 +301,4 @@ def update_profile(user: schemas.UserCreate):
 
     return {"message": "Profile updated successfully"}
 
+
