@@ -2,15 +2,10 @@
 
 A new Flutter project.
 
-## Getting Started
+Expense Tracker with AI Insights
+This project is a Flutter-based mobile application designed to help students manage their daily expenses efficiently. The application allows users to track spending, categorize transactions, set budgets, and monitor financial goals through a simple and user-friendly interface.
 
-This project is a starting point for a Flutter application.
+In addition to basic expense tracking, the system integrates an AI-based backend module that analyzes transaction data and provides insights such as predicted monthly spending, category-wise analysis, budget comparison, and goal estimation. The AI functionality is implemented using data analysis and linear regression techniques, enabling smarter financial decision-making.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+My Contribution
+My primary contribution to this project was implementing the AI module in the backend. I developed the logic to analyze transaction data and built a linear regression-based model to predict future spending patterns. I also implemented features such as expense prediction, budget analysis, and goal estimation, and integrated the AI module with backend APIs to generate real-time insights.
